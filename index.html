@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html>
+	
+<head>
+	<meta charset="utf-8">
+	<title>Aquaponics Webpage</title>
+	<style type="text/css">
+		div {
+		border: 1px solid gray;
+		padding: 8px;
+		}
+
+		h2 {
+		text-align: center;
+		text-transform: uppercase;
+		color: #4CAF50;
+		}
+
+		h3 {
+		text-align: left;
+		color: #4CAF50;
+		}
+
+		p {
+		text-indent: 50px;
+		text-align: justify;
+		letter-spacing: 3px;
+		}
+
+		a {
+		text-decoration: none;
+		color: #008CBA;
+		}
+
+		input[type=text], select {
+		width: 20%;
+		padding: 12px 20px;
+		margin: 8px 0;
+		display: inline-block;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		box-sizing: border-box;
+		}
+
+		button {
+		background-color: #ff0000; /* White */
+		border: none;
+		color: rgb(0, 0, 0);
+		padding: 15px 32px;
+		text-align: center;
+		text-decoration: none;
+		display: inline-block;
+		font-size: 16px;
+		}
+
+		#data_table {
+			font-family: Arial, Helvetica, sans-serif;
+			border-collapse: collapse;
+			width: 100%;
+		}
+		
+		#data_table td, #data_table th {
+			border: 1px solid #ddd;
+			padding: 8px;
+		}
+		
+		#data_table tr:nth-child(even){background-color: #f2f2f2;}
+		
+		#data_table tr:hover {background-color: #ddd;}
+		
+		#data_table th {
+			padding-top: 12px;
+			padding-bottom: 12px;
+			text-align: left;
+			background-color: #4CAF50;
+			color: white;
+		}
+
+		#temp_table {
+			font-family: Arial, Helvetica, sans-serif;
+			border-collapse: collapse;
+		}
+		
+		#temp_table td, #temp_table th {
+			border: 1px solid #ddd;
+			padding: 10px;
+		}
+		
+		#temp_table tr:nth-child(even){background-color: #f2f2f2;}
+		
+		#temp_table tr:hover {background-color: #ddd;}
+		
+		#temp_table th {
+			padding-top: 12px;
+			padding-bottom: 12px;
+			text-align: left;
+			background-color: #4CAF50;
+			color: white;
+		}
+
+		section {
+			padding: 30px;
+		}
+
+	</style>
+</head>
+<body>
+	
+	<header>
+		
+	</header>
+	<main>
+		<article>
+			<section id="water-level">
+				<h2>Water Level</h2>
+					<h3>Latest Data (in minutes)</h3>
+						<table id="data_table" border ="1">
+							<thead>
+								<tr>
+									<th>#</th>
+									<th>t_down</th>
+									<th>t_middle</th>
+									<th>t_up</th>
+									<th>current level</th>
+								</tr>	
+							</thead>
+							<tbody>
+								<tr>
+									<td>1</td>
+									<td id="td_1"></td>
+									<td id="tm_1"></td>
+									<td id="tu_1"></td>
+									<td id="tc_1"></td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td id="td_2"></td>
+									<td id="tm_2"></td>
+									<td id="tu_2"></td>
+									<td id="tc_2"></td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td id="td_3"></td>
+									<td id="tm_3"></td>
+									<td id="tu_3"></td>
+									<td id="tc_3"></td>
+								</tr>
+							</tbody>
+							
+						</table>
+					<h3>Warnings</h3>
+						Level 2 high for too long
+			</section>
+			<section id="pumps-control">
+				<h2>Pumps Control</h2>
+					Pump on duty: <input type="text" id="p_onDuty" value="yet"><br>
+					start time: <input type="text" id="p_Tstart" value="datetime"><br>
+					cycle time: <input type="text" id="p_Tcycle" value="38:12"><br>
+					<h3>Control pumps</h3>
+						<button id = 'p_1'>Pump 1</button>
+						<button id = 'p_2'>Pump 2</button>
+						<button id = 'p_auto'>Auto</button>
+						<button id = 'p_off'>OFF</button>
+						
+					<h3>Warnings</h3>
+						Pump 1 not working.
+			</section>
+			<section>
+				<h2>Water Quality</h2>
+					<h3>Latest Data</h3>
+							<table border ="1" id="temp_table">
+								<thead>
+									<tr>
+										<th>Temprature</th>
+										<th>TDS</th>
+									</tr>	
+								</thead>
+								<tbody>
+									<tr>
+										<td id="temp">35</td>
+										<td id="tds">4500</td>
+									</tr>
+								</tbody>
+								
+							</table>
+					<h3>Warnings</h3>
+						No Warnings. Conditions are within limits 
+			</section>
+		</article>
+	</main>
+
+	<script type="text/javascript" src="index.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+		const nb_lvls = 1;
+    	document.addEventListener('DOMContentLoaded', function() {
+        var socket = io();
+		//reload page
+		socket.on('reload',function(data){
+			console.log(data)
+			const elements = data.split(';');
+			temp_listener(elements[0])
+			tds_listener(elements[1])
+			p_1_listener(elements[2])
+			p_2_listener(elements[3])
+			p_off_listener(elements[4])
+			p_auto_listener(elements[5])
+			p_Tstart_listener(elements[6])
+			var n = 7;
+			for (let i=0;i<3;i++){
+				for (let j=0;j<3;j++){
+					levels_listener([i.toString(),j.toString(),elements[n],elements[n+3-j]].join(';'))
+					n++;	
+				}
+				n++;
+			}
+		})
+		//sensor events
+        socket.on('temp', function(data) {
+			temp_listener(data);
+        });
+        socket.on('tds', function(data) {
+			tds_listener(data);
+		});
+		//pumps events
+		socket.on('p_1', function(data) {
+            p_1_listener(data);
+        });
+		socket.on('p_2', function(data) {
+           	p_2_listener(data);
+        });
+		socket.on('p_off', function(data) {
+            p_off_listener(data);
+        });
+		socket.on('p_auto', function(data) {
+			p_auto_listener(data)
+        });
+		socket.on('p_Tstart', function(data) {
+            p_Tstart_listener(data)
+        });
+		//level events
+		socket.on('level', function(data) {
+			levels_listener(data)
+        });    
+    });
+	function temp_listener(data){
+		document.getElementById('temp').innerHTML = data;
+	}
+	function tds_listener(data){
+		document.getElementById('tds').innerHTML = data;
+	}
+	function p_1_listener(data){
+		if (data == '1'){
+				document.getElementById('p_1').style.backgroundColor = '#34c417';
+				document.getElementById('p_onDuty').value = 'Pump 1';
+				document.getElementById('p_2').style.backgroundColor = '#ff000';	
+				document.getElementById('p_off').style.backgroundColor = '#ff000';	
+			}
+			else{
+				document.getElementById('p_1').style.backgroundColor = '#ff000';	
+			}
+	}
+	function p_2_listener(data){
+		if (data == '1'){
+				document.getElementById('p_onDuty').value = 'Pump 2';
+				document.getElementById('p_2').style.backgroundColor = '#34c417';
+				document.getElementById('p_1').style.backgroundColor = '#ff000';	
+				document.getElementById('p_off').style.backgroundColor = '#ff000';	
+			}
+			else{
+				document.getElementById('p_2').style.backgroundColor = '#ff000';	
+			}
+	}
+	function p_off_listener(data){
+		if (data == '1'){
+				document.getElementById('p_onDuty').value = 'None';
+				document.getElementById('p_off').style.backgroundColor = '#34c417';
+				document.getElementById('p_1').style.backgroundColor = '#fffff';	
+				document.getElementById('p_2').style.backgroundColor = '#fffff';	
+			}
+			else{
+				document.getElementById('p_off').style.backgroundColor = '#ff000';	
+			}
+	}
+	function p_auto_listener(data){
+		if (data == '1'){
+				document.getElementById('p_auto').style.backgroundColor = '#34c417';
+			}
+			else{
+				document.getElementById('p_auto').style.backgroundColor = '#ff000';	
+			}
+	}
+	function p_Tstart_listener(data){
+		document.getElementById('p_Tstart').value = data;
+	}
+	function levels_listener(data){
+		const msg = data.split(';');
+			
+			const lvl = new Array(
+			[document.getElementById('td_1'),document.getElementById('tm_1'),document.getElementById('tu_1')],
+			[document.getElementById('td_2'),document.getElementById('tm_2'),document.getElementById('tu_2')],
+			[document.getElementById('td_3'),document.getElementById('tm_3'),document.getElementById('tu_3')]
+			);
+			const current_lvl = new Array(
+				document.getElementById('tc_1'),document.getElementById('tc_2'),document.getElementById('tc_3')
+			)
+
+			const nb = parseInt(msg[0]);
+			const state = parseInt(msg[1]);
+			const dt = msg[2];
+			const curr = msg[3]
+
+			lvl[nb][state].innerHTML = dt;
+			current_lvl[nb].innerHTML = curr;
+	}
+    </script>
+</body>
+
+</html>
